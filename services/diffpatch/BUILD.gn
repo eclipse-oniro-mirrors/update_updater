@@ -1,0 +1,101 @@
+# Copyright (C) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+config("diff_config") {
+  cflags_cc = [
+    "-frtti",
+    "-std=c++17",
+  ]
+  if (is_mingw) {
+    cflags_cc += [ "-Wno-inconsistent-dllimport" ]
+  }
+  defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
+}
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+ohos_executable("diff") {
+  use_exceptions = true
+  configs = [ ":diff_config" ]
+
+  sources = [
+    "${updater_path}/services/package/pkg_manager/pkg_utils.cpp",
+    "./bzip2/bzip2_adapter.cpp",
+    "./bzip2/lz4_adapter.cpp",
+    "./bzip2/zip_adapter.cpp",
+    "./diff/blocks_diff.cpp",
+    "./diff/image_diff.cpp",
+    "./diff/update_diff.cpp",
+    "./diff_main.cpp",
+    "./diffpatch.cpp",
+    "./patch/blocks_patch.cpp",
+    "./patch/image_patch.cpp",
+    "./patch/update_patch.cpp",
+  ]
+
+  include_dirs = [
+    ".",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/patch",
+    "${updater_path}/services/include",
+    "${updater_path}/utils/include",
+    "${updater_path}/services/diffpatch/bzip2",
+    "${updater_path}/services/diffpatch/diff",
+    "${updater_path}/services/diffpatch/patch",
+    "${updater_path}/services/diffpatch",
+    "${updater_path}/services/package/pkg_manager",
+    "${updater_path}/services/include/log",
+  ]
+
+  deps = [
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/services/package:libupdaterpackage",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "bzip2:libbz2",
+    "lz4:liblz4_static",
+    "openssl:libcrypto_static",
+    "zlib:libz",
+  ]
+
+  if (is_mingw) {
+    static_link = false
+    libs = [ "setupapi" ]
+    ldflags = [
+      "-Wl,--whole-archive",
+      "-lpthread",
+      "-Wl,--no-whole-archive",
+    ]
+  }
+
+  if (is_linux) {
+    static_link = false
+
+    ldflags = [
+      "-Wl,--whole-archive",
+      "-lpthread",
+      "-latomic",
+      "-ldl",
+      "-lrt",
+      "-Wl,--no-whole-archive",
+    ]
+  }
+  install_enable = false
+  subsystem_name = "updater"
+  part_name = "updater"
+}
