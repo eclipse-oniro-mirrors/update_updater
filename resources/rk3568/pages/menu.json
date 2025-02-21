@@ -1,0 +1,122 @@
+{
+    "id": "menu",
+    "bgColor" : "#000000ff",
+    "subpages" : [
+        {
+            "id":"normal",
+            "coms":[
+                "OHOSIcon_Image",
+                "SdUpdate_Button",
+                "FactoryRstNormal_Button",
+                "Reboot_Button",
+                "Shutdown_Button",
+                "Usage_Label"
+            ],
+            "bgColor" : "#f1f3f5ff"
+        }
+    ],
+    "default": {
+        "Common": {
+            "visible": false
+        },
+        "UILabel": {
+            "bgColor": "#f1f3f5ff",
+            "fontColor": "#000000e6",
+            "align" : "center"
+        },
+        "UIImageView": {
+            "imgCnt" : 1,
+            "updInterval": 0,
+            "filePrefix" : ""
+        },
+        "UILabelButton": {
+            "bgColor": "#e5e7e9ff",
+            "txtColor": "#007dffff",
+            "focusedBgColor": "#007dffff",
+            "focusedTxtColor": "#ffffffff",
+            "focusable" : true
+        }
+    },
+    "coms": [
+        {
+            "type": "UIImageView",
+            "id": "OHOSIcon_Image",
+            "x": 120,
+            "y": 426,
+            "w": 480,
+            "h": 60,
+            "resPath": "/resources/images/icon/lightOUCOHlogo.png"
+        },
+        {
+            "type": "UILabelButton",
+            "id": "SdUpdate_Button",
+            "text": "[LABEL_UPDATE_FROM_SDCARD]",
+            "x": 48,
+            "y": 800,
+            "w": 624,
+            "h": 80,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabelButton",
+            "id": "RebootDevice_Button",
+            "text": "[LABEL_REBOOT_DEVICE]",
+            "x": 48,
+            "y": 1130,
+            "w": 624,
+            "h": 60,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabelButton",
+            "id": "FactoryRstNormal_Button",
+            "text": "[LABEL_USER_DATA_RESET]",
+            "x": 48,
+            "y": 910,
+            "w": 624,
+            "h": 80,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabelButton",
+            "id": "FactoryRst_Button",
+            "text": "[LABEL_USER_DATA_RESET]",
+            "x": 48,
+            "y": 910,
+            "w": 624,
+            "h": 80,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabelButton",
+            "id": "Reboot_Button",
+            "text": "[LABEL_REBOOT]",
+            "x": 48,
+            "y": 1020,
+            "w": 624,
+            "h": 80,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabelButton",
+            "id": "Shutdown_Button",
+            "text": "[LABEL_SHUTDOWN]",
+            "x": 48,
+            "y": 1130,
+            "w": 624,
+            "h": 80,
+            "fontSize": 32
+        },
+        {
+            "type": "UILabel",
+            "id": "Usage_Label",
+            "text": "[LABEL_MENU_USAGE]",
+            "x": 62,
+            "y": 548,
+            "w": 596,
+            "h": 38,
+            "fontSize": 28,
+            "fontColor": "#00000099"
+        }
+    ]
+}
