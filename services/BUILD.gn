@@ -1,0 +1,191 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+updater_common_include = [
+  "include",
+  "ui/view",
+  "${updater_path}/utils/include",
+  "${updater_path}/interfaces/kits/include/",
+  "${updater_path}/services/common",
+  "${updater_path}/services/include/package",
+  "${updater_path}/services/package/pkg_manager",
+  "${updater_path}/services/package/pkg_verify",
+  "${updater_path}/services/include/log",
+  "${updater_path}/utils/json",
+  "//third_party/bounds_checking_function/include",
+  ".",
+  "./ui/include",
+  "./ui",
+  "./ui/control",
+]
+
+updater_common_deps = [
+  "${updater_path}/interfaces/kits/packages:libpackageExt",
+  "${updater_path}/services/applypatch:libapplypatch",
+  "${updater_path}/services/diffpatch/patch:libpatch",
+  "${updater_path}/services/flashd:libflashd",
+  "${updater_path}/services/fs_manager:libfsmanager",
+  "${updater_path}/services/log:libupdaterlog",
+  "${updater_path}/services/package:libupdaterpackage",
+  "${updater_path}/services/write_state:libwritestate",
+  "//third_party/bounds_checking_function:libsec_shared",
+  "//third_party/bounds_checking_function:libsec_static",
+  "//third_party/bzip2:libbz2",
+  "//third_party/cJSON:cjson",
+  "//third_party/openssl:libcrypto_shared",
+  "//third_party/openssl:libssl_shared",
+  "//third_party/zlib:libz",
+]
+
+updater_gen("updater") {
+  deps = [ "${updater_path}/services:libupdater_static" ]
+
+  # force link flashd library
+  ldflags = [
+    "-Wl,--whole-archive",
+    rebase_path("${target_out_dir}/flashd/libflashd.a"),
+    "-Wl,--no-whole-archive",
+  ]
+
+  part_name = "updater"
+  subsystem_name = "updater"
+}
+
+ohos_static_library("libupdater_static") {
+  defines = [ "BUILD_OHOS" ]
+  sources = [
+    "factory_reset/factory_reset.cpp",
+    "hwfault_retry/hwfault_retry.cpp",
+    "main.cpp",
+    "updater.cpp",
+    "updater_main.cpp",
+    "updater_preprocess.cpp",
+    "updater_utils.cpp",
+  ]
+
+  if (updater_ui_support) {
+    sources += [ "updater_ui.cpp" ]
+  }
+
+  include_dirs = updater_common_include
+
+  deps = updater_common_deps
+  deps += [
+    "${updater_path}/interfaces/kits/misc_info:libmiscinfo",
+    "${updater_path}/services/sdcard_update:libsdupdate",
+    "${updater_path}/services/ui:libui",
+    "//third_party/libdrm:libdrm",
+    "//third_party/openssl:libcrypto_shared",
+  ]
+
+  if (defined(use_ptable)) {
+    include_dirs += [ "${updater_path}/services/ptable_parse" ]
+    deps += [ "${updater_path}/services/ptable_parse:libptableparse" ]
+    defines += [ "UPDATER_USE_PTABLE" ]
+  }
+
+  external_deps = [ "init:libbegetutil" ]
+  if (updater_ui_support) {
+    external_deps += [ "drivers_peripheral_input:hdi_input_udriver" ]
+  }
+
+  if (updater_ui_support) {
+    external_deps += [ "ui_lite:libupdater_layout" ]
+  }
+
+  if (build_selinux) {
+    external_deps += [ "selinux_adapter:librestorecon" ]
+    deps += [ "//third_party/selinux:libselinux" ]
+    include_dirs += [ "//third_party/selinux/libselinux/include" ]
+    cflags = [ "-DWITH_SELINUX" ]
+  }
+
+  if (build_variant == "user") {
+    defines += [ "UPDATER_BUILD_VARIANT_USER" ]
+  }
+
+  part_name = "updater"
+  subsystem_name = "updater"
+}
+
+config("libupdater_exported_headers") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "${updater_path}/services/include",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services",
+  ]
+}
+
+ohos_static_library("libupdater") {
+  defines = [ "BUILD_OHOS" ]
+  sources = [
+    "factory_reset/factory_reset.cpp",
+    "hwfault_retry/hwfault_retry.cpp",
+    "updater.cpp",
+    "updater_preprocess.cpp",
+    "updater_utils.cpp",
+  ]
+
+  include_dirs = updater_common_include
+
+  deps = updater_common_deps
+
+  public_configs = [ ":libupdater_exported_headers" ]
+
+  if (defined(use_ptable)) {
+    include_dirs += [ "${updater_path}/services/ptable_parse" ]
+    deps += [ "${updater_path}/services/ptable_parse:libptableparse" ]
+    defines += [ "UPDATER_USE_PTABLE" ]
+  }
+
+  ldflags = []
+
+  # force link invisible function
+  if (defined(updater_force_link_libs)) {
+    ldflags += [ "-Wl,--whole-archive" ]
+    foreach(lib, updater_force_link_libs) {
+      ldflags += [ "${lib}" ]
+    }
+    ldflags += [ "-Wl,--no-whole-archive" ]
+  }
+
+  external_deps = [ "init:libbegetutil" ]
+
+  # add updater custom library
+  if (defined(updater_custom_external_deps)) {
+    external_deps += updater_custom_external_deps
+  }
+
+  if (updater_ui_support) {
+    external_deps += [ "drivers_peripheral_input:hdi_input_udriver" ]
+  }
+
+  if (updater_ui_support) {
+    external_deps += [ "ui_lite:libupdater_layout" ]
+  }
+
+  if (build_selinux) {
+    external_deps += [ "selinux_adapter:librestorecon" ]
+    deps += [ "//third_party/selinux:libselinux" ]
+    include_dirs += [ "//third_party/selinux/libselinux/include" ]
+    cflags = [ "-DWITH_SELINUX" ]
+  }
+
+  subsystem_name = "updater"
+  part_name = "updater"
+}

@@ -1,0 +1,147 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/test.gni")
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+MODULE_OUTPUT_PATH = "updater/updater_test"
+HDC_PATH = "//developtools/hdc/src"
+
+ohos_unittest("flashd_unittest") {
+  testonly = true
+  resource_config_file =
+      "//base/update/updater/test/unittest/test_data/ohos_test.xml"
+  module_out_path = MODULE_OUTPUT_PATH
+  sources = [
+    "${HDC_PATH}/common/async_cmd.cpp",
+    "${HDC_PATH}/common/auth.cpp",
+    "${HDC_PATH}/common/base.cpp",
+    "${HDC_PATH}/common/channel.cpp",
+    "${HDC_PATH}/common/circle_buffer.cpp",
+    "${HDC_PATH}/common/debug.cpp",
+    "${HDC_PATH}/common/file.cpp",
+    "${HDC_PATH}/common/file_descriptor.cpp",
+    "${HDC_PATH}/common/forward.cpp",
+    "${HDC_PATH}/common/session.cpp",
+    "${HDC_PATH}/common/task.cpp",
+    "${HDC_PATH}/common/tcp.cpp",
+    "${HDC_PATH}/common/transfer.cpp",
+    "${HDC_PATH}/common/usb.cpp",
+    "${updater_path}/services/flashd/daemon/commander.cpp",
+    "${updater_path}/services/flashd/daemon/commander_factory.cpp",
+    "${updater_path}/services/flashd/daemon/daemon_updater.cpp",
+    "${updater_path}/services/flashd/daemon/erase_commander.cpp",
+    "${updater_path}/services/flashd/daemon/flash_commander.cpp",
+    "${updater_path}/services/flashd/daemon/flashd_main.cpp",
+    "${updater_path}/services/flashd/daemon/flashd_utils.cpp",
+    "${updater_path}/services/flashd/daemon/format_commander.cpp",
+    "${updater_path}/services/flashd/daemon/update_commander.cpp",
+    "${updater_path}/services/flashd/image_writer/image_writer.cpp",
+    "${updater_path}/services/flashd/partition.cpp",
+    "${updater_path}/services/hdi/server/update_hdi_impl.cpp",
+    "${updater_path}/services/updater_utils.cpp",
+    "flashd_unittest.cpp",
+  ]
+  include_dirs = [
+    "${HDC_PATH}/daemon",
+    "${HDC_PATH}/common",
+    "${updater_path}/services",
+    "${updater_path}/services/common",
+    "${updater_path}/services/flashd",
+    "${updater_path}/services/flashd/daemon",
+    "${updater_path}/services/flashd/common",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/ptable_parse",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/ui",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include",
+    "${updater_path}/services/ptable_parse",
+    "${updater_path}/utils/include",
+    "${updater_path}/utils/json",
+    "//base/startup/init/services/include/param",
+    "//third_party/bounds_checking_function/include",
+    "//third_party/cJSON",
+    "//third_party/lz4/lib",
+    "//third_party/libuv",
+  ]
+
+  deps = [
+    "${updater_path}/interfaces/kits/misc_info:libmiscinfo",
+    "${updater_path}/interfaces/kits/updaterkits:libupdaterkits",
+    "${updater_path}/services:updater",
+    "${updater_path}/services/applypatch:libapplypatch",
+    "${updater_path}/services/diffpatch/patch:libpatch",
+    "${updater_path}/services/fs_manager:libfsmanager",
+    "${updater_path}/services/hdi/server:libupdate_hdi_impl",
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/services/package:libupdaterpackage",
+    "${updater_path}/services/script:libupdaterscript",
+    "${updater_path}/utils:libutils",
+    "//developtools/hdc:hdc_hash_gen",
+    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/bzip2:libbz2",
+    "//third_party/cJSON:cjson",
+    "//third_party/googletest:gmock_main",
+    "//third_party/googletest:gtest_main",
+    "//third_party/libuv:uv",
+    "//third_party/lz4:liblz4_static",
+    "//third_party/openssl:libcrypto_shared",
+    "//third_party/zlib:libz",
+  ]
+
+  external_deps = [
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+  configs = [ "${updater_path}/test/unittest:utest_config" ]
+  install_enable = true
+  part_name = "updater"
+  defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
+}
+
+ohos_unittest("flashd_util_unittest") {
+  testonly = true
+  resource_config_file = "${updater_path}/test/unittest/test_data/ohos_test.xml"
+  module_out_path = MODULE_OUTPUT_PATH
+  sources = [
+    "${updater_path}/services/flashd/daemon/flashd_utils.cpp",
+    "flashd_util_unittest.cpp",
+  ]
+  include_dirs = [
+    "${updater_path}/services/include",
+    "${updater_path}/utils/include",
+    "${updater_path}/services/flashd",
+    "//third_party/libuv",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/common",
+    "${updater_path}/services/flashd/common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+  deps = [ "//third_party/libuv:uv" ]
+  configs = [ "${updater_path}/test/unittest:utest_config" ]
+  install_enable = true
+  part_name = "updater"
+  defines = [
+    "OPENSSL_SUPPRESS_DEPRECATED",
+    "HDC_SUPPORT_FLASHD",
+  ]
+}

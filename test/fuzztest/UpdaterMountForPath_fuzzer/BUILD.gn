@@ -1,0 +1,59 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+module_output_path = "updater/updater"
+
+import("//base/update/updater/updater_default_cfg.gni")
+
+#####################hydra-fuzz###################
+import("//build/config/features.gni")
+import("//build/test.gni")
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+##############################fuzztest##########################################
+ohos_fuzztest("UpdaterMountForPathFuzzTest") {
+  module_out_path = module_output_path
+  resource_config_file =
+      "${updater_path}/test/fuzztest/fuzz_src_data/ohos_test.xml"
+  fuzz_config_file = "${updater_path}/test/fuzztest/UpdaterMountForPath_fuzzer"
+  include_dirs = [
+    "${updater_path}/utils/include",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/fs_manager",
+    "${updater_path}/services/package/pkg_manager",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services",
+    "${updater_path}/services/ui",
+    "${updater_path}/services/include",
+    "${updater_path}/test/fuzztest/utils",
+  ]
+
+  deps = [
+    "${updater_path}/services/fs_manager:libfsmanager",
+    "${updater_path}/services/log:libupdaterlog",
+  ]
+
+  external_deps = [ "init:libbegetutil" ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+  ]
+  sources = [
+    "${updater_path}/test/fuzztest/utils/fuzz_utils.cpp",
+    "UpdaterMountForPath_fuzzer.cpp",
+  ]
+}

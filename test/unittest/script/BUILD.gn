@@ -1,0 +1,131 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/test.gni")
+
+MODULE_OUTPUT_PATH = "updater/updater_test"
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+ohos_unittest("script_unittest") {
+  testonly = true
+  resource_config_file = "${updater_path}/test/unittest/test_data/ohos_test.xml"
+  module_out_path = MODULE_OUTPUT_PATH
+  sources = [
+    "script_instruction/basic_instruction_unittest.cpp",
+    "script_instruction/script_instructionhelper_unittest.cpp",
+    "script_instruction/script_loadscript_unittest.cpp",
+    "script_instruction/script_registercmd_unittest.cpp",
+    "script_instruction/script_updateprocesser_unittest.cpp",
+    "script_interpreter_unittest.cpp",
+    "script_unittest.cpp",
+    "threadpool_unittest.cpp",
+  ]
+  sources += [
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+    "${updater_path}/services/script/script_instruction/script_basicinstruction.cpp",
+    "${updater_path}/services/script/script_instruction/script_instructionhelper.cpp",
+    "${updater_path}/services/script/script_instruction/script_loadscript.cpp",
+    "${updater_path}/services/script/script_instruction/script_registercmd.cpp",
+    "${updater_path}/services/script/script_instruction/script_updateprocesser.cpp",
+    "${updater_path}/services/script/script_interpreter/script_context.cpp",
+    "${updater_path}/services/script/script_interpreter/script_expression.cpp",
+    "${updater_path}/services/script/script_interpreter/script_function.cpp",
+    "${updater_path}/services/script/script_interpreter/script_interpreter.cpp",
+    "${updater_path}/services/script/script_interpreter/script_param.cpp",
+    "${updater_path}/services/script/script_interpreter/script_scanner.cpp",
+    "${updater_path}/services/script/script_interpreter/script_statement.cpp",
+    "${updater_path}/services/script/script_manager/script_managerImpl.cpp",
+    "${updater_path}/services/script/script_manager/script_utils.cpp",
+    "${updater_path}/services/script/threadpool/threadpool.cpp",
+  ]
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include/updater",
+    "${updater_path}/services/package/pkg_algorithm",
+    "${updater_path}/services/package/pkg_manager",
+    "${updater_path}/services/script/script_instruction",
+    "${updater_path}/services/script/script_interpreter",
+    "${updater_path}/services/script/script_manager",
+    "${updater_path}/services/script/threadpool",
+    "$root_out_dir/updater/updater/yacc",
+    "${updater_path}/test/unittest",
+    "${updater_path}/utils/include",
+    "//third_party/bounds_checking_function/include",
+  ]
+
+  deps = [
+    "${updater_path}/interfaces/kits/packages:libpackageExt",
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/services/package:libupdaterpackage",
+    "${updater_path}/services/script:gen_yacc",
+    "${updater_path}/utils:libutils",
+    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/bzip2:libbz2",
+    "//third_party/googletest:gmock_main",
+    "//third_party/googletest:gtest_main",
+    "//third_party/lz4:liblz4_static",
+    "//third_party/openssl:libcrypto_shared",
+    "//third_party/openssl:libssl_shared",
+    "//third_party/zlib:libz",
+  ]
+  configs = [ "${updater_path}/test/unittest:utest_config" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+  install_enable = true
+  part_name = "updater"
+}
+
+ohos_shared_library("user_instruction") {
+  sources = [ "script_instruction/user_instruction/user_instruction.cpp" ]
+  output_extension = "so"
+  ldflags = [ "-rdynamic" ]
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include/",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/script/script_instruction",
+    "${updater_path}/utils/include",
+  ]
+  install_enable = true
+  subsystem_name = "updater"
+  part_name = "updater"
+}
+
+ohos_shared_library("user_instruction_invalid") {
+  sources =
+      [ "script_instruction/user_instruction/user_instruction_invalid.cpp" ]
+  output_extension = "so"
+  ldflags = [ "-rdynamic" ]
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include/",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/script/script_instruction",
+    "${updater_path}/utils/include",
+  ]
+  install_enable = true
+  subsystem_name = "updater"
+  part_name = "updater"
+}

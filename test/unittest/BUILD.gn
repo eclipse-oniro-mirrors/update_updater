@@ -1,0 +1,221 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/test.gni")
+
+module_output_path = "updater/updater_test"
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+config("utest_config") {
+  visibility = [ "./*" ]
+  visibility += [
+    "//base/startup/appspawn/test/unittest/*",
+    "//base/startup/init/test/unittest/*",
+    "//base/update/sys_installer/test/unittest/*",
+  ]
+
+  cflags = [
+    "--coverage",
+    "-fprofile-arcs",
+    "-Wno-implicit-fallthrough",
+    "-Wno-unused-function",
+  ]
+  cflags_cc = [
+    "-Wno-implicit-fallthrough",
+    "-fexceptions",
+  ]
+
+  ldflags = [ "--coverage" ]
+
+  defines = [
+    "UPDATER_UT",
+    "BUILD_OHOS",
+    "HDC_DEBUG",
+    "HDC_SUPPORT_FLASHD",
+    "HARMONY_PROJECT",
+  ]
+}
+
+ohos_unittest("updater_unittest") {
+  testonly = true
+  resource_config_file = "${updater_path}/test/unittest/test_data/ohos_test.xml"
+  module_out_path = module_output_path
+  sources = [
+    "diffpatch/bzip2_unittest.cpp",
+    "diffpatch/diffpatch_unittest.cpp",
+    "diffpatch/image_patch_unittest.cpp",
+    "log_test/log_unittest.cpp",
+    "misc_info_test/misc_info_unittest.cpp",
+    "updater_test/hwfault_retry_unittest.cpp",
+    "updater_test/record_install_time_unittest.cpp",
+    "updaterkits_test/updaterkits_unittest.cpp",
+  ]
+
+  sources += [
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+    "${updater_path}/interfaces/kits/misc_info/misc_info.cpp",
+    "${updater_path}/interfaces/kits/packages/package.cpp",
+    "${updater_path}/interfaces/kits/updaterkits/updaterkits.cpp",
+    "${updater_path}/services/diffpatch/bzip2/bzip2_adapter.cpp",
+    "${updater_path}/services/diffpatch/bzip2/lz4_adapter.cpp",
+    "${updater_path}/services/diffpatch/bzip2/zip_adapter.cpp",
+    "${updater_path}/services/diffpatch/diff/blocks_diff.cpp",
+    "${updater_path}/services/diffpatch/diff/image_diff.cpp",
+    "${updater_path}/services/diffpatch/diff/update_diff.cpp",
+    "${updater_path}/services/diffpatch/diffpatch.cpp",
+    "${updater_path}/services/diffpatch/patch/blocks_patch.cpp",
+    "${updater_path}/services/diffpatch/patch/image_patch.cpp",
+    "${updater_path}/services/diffpatch/patch/update_patch.cpp",
+    "${updater_path}/services/hwfault_retry/hwfault_retry.cpp",
+    "${updater_path}/services/log/log.cpp",
+    "${updater_path}/services/package/pkg_algorithm/pkg_algo_deflate.cpp",
+    "${updater_path}/services/package/pkg_algorithm/pkg_algo_digest.cpp",
+    "${updater_path}/services/package/pkg_algorithm/pkg_algo_lz4.cpp",
+    "${updater_path}/services/package/pkg_algorithm/pkg_algo_sign.cpp",
+    "${updater_path}/services/package/pkg_algorithm/pkg_algorithm.cpp",
+    "${updater_path}/services/package/pkg_manager/pkg_managerImpl.cpp",
+    "${updater_path}/services/package/pkg_manager/pkg_stream.cpp",
+    "${updater_path}/services/package/pkg_manager/pkg_utils.cpp",
+    "${updater_path}/services/package/pkg_package/pkg_gzipfile.cpp",
+    "${updater_path}/services/package/pkg_package/pkg_lz4file.cpp",
+    "${updater_path}/services/package/pkg_package/pkg_pkgfile.cpp",
+    "${updater_path}/services/package/pkg_package/pkg_upgradefile.cpp",
+    "${updater_path}/services/package/pkg_package/pkg_zipfile.cpp",
+    "${updater_path}/services/script/script_instruction/script_basicinstruction.cpp",
+    "${updater_path}/services/script/script_instruction/script_instructionhelper.cpp",
+    "${updater_path}/services/script/script_instruction/script_loadscript.cpp",
+    "${updater_path}/services/script/script_instruction/script_registercmd.cpp",
+    "${updater_path}/services/script/script_instruction/script_updateprocesser.cpp",
+    "${updater_path}/services/script/script_interpreter/script_context.cpp",
+    "${updater_path}/services/script/script_interpreter/script_expression.cpp",
+    "${updater_path}/services/script/script_interpreter/script_function.cpp",
+    "${updater_path}/services/script/script_interpreter/script_interpreter.cpp",
+    "${updater_path}/services/script/script_interpreter/script_param.cpp",
+    "${updater_path}/services/script/script_interpreter/script_scanner.cpp",
+    "${updater_path}/services/script/script_interpreter/script_statement.cpp",
+    "${updater_path}/services/script/script_manager/script_managerImpl.cpp",
+    "${updater_path}/services/script/script_manager/script_utils.cpp",
+    "${updater_path}/services/script/threadpool/threadpool.cpp",
+    "${updater_path}/services/updater_utils.cpp",
+    "${updater_path}/utils/utils.cpp",
+  ]
+
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include/",
+    "${updater_path}/interfaces/kits/include/package",
+    "${updater_path}/services/include/",
+    "${updater_path}/utils/include/",
+    "${updater_path}/utils/json/",
+    "${updater_path}/services/",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include/patch",
+    "${updater_path}/services/include/updater",
+    "${updater_path}/services/script/script_instruction",
+    "${updater_path}/services/script/script_interpreter",
+    "${updater_path}/services/script/script_manager",
+    "${updater_path}/services/script/threadpool",
+    "$root_out_dir/updater/updater/yacc",
+    "${updater_path}/services/package/pkg_algorithm",
+    "${updater_path}/services/package/pkg_manager",
+    "${updater_path}/services/package/pkg_package",
+    "${updater_path}/services/package/pkg_verify",
+    "${updater_path}/services/include/fs_manager",
+    "${updater_path}/services/fs_manager",
+    "${updater_path}/services/applypatch",
+    "${updater_path}/services/common",
+    "${updater_path}/services/diffpatch",
+    "${updater_path}/services/diffpatch/diff",
+    "${updater_path}/services/diffpatch/patch",
+    "${updater_path}/services/diffpatch/bzip2",
+    "${updater_path}/services/ui",
+    "${updater_path}/test/unittest",
+    "//developtools/hdc/src/common",
+    "//developtools/hdc/src/host",
+    "//developtools/hdc/src/daemon",
+    "//third_party/zlib",
+    "//third_party/lz4/lib",
+    "//third_party/bounds_checking_function/include",
+    "//foundation/arkui/napi/interfaces/kits",
+    "//third_party/cJSON",
+    "//third_party/curl/include",
+    "//third_party/bzip2",
+    "//third_party/libdrm/include/drm",
+    "//third_party/libdrm",
+    "//third_party/googletest/googletest/include",
+    "//drivers/framework/ability/sbuf/include",
+    "//drivers/framework/include/platform",
+    "//drivers/framework/include/core",
+    "//drivers/framework/include/osal",
+    "//drivers/framework/include/utils",
+    "//drivers/framework/include/config",
+    "//drivers/framework/include",
+    "//drivers/peripheral/input/hal/include",
+    "//drivers/peripheral/input/interfaces/include",
+    "//drivers/peripheral/partitionslot/hal/include",
+    "//third_party/bounds_checking_function/include",
+  ]
+  deps = [
+    "${updater_path}/interfaces/kits/misc_info:libmiscinfo",
+    "${updater_path}/services/applypatch:libapplypatch",
+    "${updater_path}/services/diffpatch/diff:libdiff",
+    "${updater_path}/services/diffpatch/patch:libpatch",
+    "${updater_path}/services/fs_manager:libfsmanager",
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/services/package:libupdaterpackage",
+    "${updater_path}/utils:libutils",
+    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/bzip2:libbz2",
+    "//third_party/cJSON:cjson",
+    "//third_party/googletest:gmock_main",
+    "//third_party/googletest:gtest_main",
+    "//third_party/libuv:uv",
+    "//third_party/lz4:liblz4_static",
+    "//third_party/openssl:libcrypto_shared",
+    "//third_party/openssl:libssl_shared",
+    "//third_party/zlib:libz",
+  ]
+
+  deps += [
+    "${updater_path}/services/script:gen_yacc",
+    "${updater_path}/test/unittest:test_update_binary",
+    "${updater_path}/test/unittest:test_update_binary_abnormal",
+  ]
+
+  external_deps = [
+    "hilog:libhilog_base",
+    "init:libbegetutil",
+  ]
+
+  public_configs = [ ":utest_config" ]
+  install_enable = true
+  part_name = "updater"
+  defines = [ "OPENSSL_SUPPRESS_DEPRECATED" ]
+}
+
+ohos_executable("test_update_binary") {
+  sources = [ "updater_test/test_update_binary.cpp" ]
+  install_enable = true
+  part_name = "updater"
+  subsystem_name = "updater"
+}
+
+ohos_executable("test_update_binary_abnormal") {
+  sources = [ "updater_test/test_update_binary_abnormal.cpp" ]
+  install_enable = true
+  part_name = "updater"
+  subsystem_name = "updater"
+}

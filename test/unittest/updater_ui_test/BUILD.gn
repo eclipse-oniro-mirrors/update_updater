@@ -1,0 +1,110 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/test.gni")
+
+MODULE_OUTPUT_PATH = "updater/updater_test"
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+ohos_unittest("ui_unittest") {
+  testonly = true
+  resource_config_file = "${updater_path}/test/unittest/test_data/ohos_test.xml"
+  module_out_path = MODULE_OUTPUT_PATH
+  defines = [
+    "UPDATER_UT",
+    "UPDATER_UI_SUPPORT",
+    "ENABLE_BITMAP_FONT = 0",
+    "ENABLE_ICU = 0",
+    "ENABLE_MULTI_FONT = 0",
+    "ENABLE_SHAPING = 0",
+    "ENABLE_STATIC_FONT = 0",
+    "ENABLE_VECTOR_FONT = 1",
+  ]
+  sources = [
+    "lang/ui_language_unittest.cpp",
+    "strategy/ui_strategy_unittest.cpp",
+    "view/ui_component_unittest.cpp",
+    "view/ui_layout_unittest.cpp",
+    "view/ui_page_manager_unittest.cpp",
+    "view/ui_view_api_unittest.cpp",
+    "view/ui_view_proxy_unittest.cpp",
+  ]
+  sources += [
+    "${updater_path}/services/ui/language/language_ui.cpp",
+    "${updater_path}/services/ui/strategy/ui_strategy.cpp",
+    "${updater_path}/services/ui/view/component/box_progress_adapter.cpp",
+    "${updater_path}/services/ui/view/component/component_factory.cpp",
+    "${updater_path}/services/ui/view/component/img_view_adapter.cpp",
+    "${updater_path}/services/ui/view/component/label_btn_adapter.cpp",
+    "${updater_path}/services/ui/view/component/text_label_adapter.cpp",
+    "${updater_path}/services/ui/view/layout/auto_layout.cpp",
+    "${updater_path}/services/ui/view/layout/layout_parser.cpp",
+    "${updater_path}/services/ui/view/page/base_page.cpp",
+    "${updater_path}/services/ui/view/page/page.cpp",
+    "${updater_path}/services/ui/view/page/page_manager.cpp",
+    "${updater_path}/services/ui/view/page/sub_page.cpp",
+    "${updater_path}/services/ui/view/view_api.cpp",
+  ]
+
+  include_dirs = [
+    "//third_party/libpng",
+    "//third_party/libdrm/include/drm",
+    "//third_party/libdrm",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include",
+    "//drivers/hdf_core/framework/ability/sbuf/include",
+    "//drivers/hdf_core/framework/include/platform",
+    "//drivers/hdf_core/framework/include/core",
+    "//drivers/hdf_core/framework/include/osal",
+    "//drivers/hdf_core/framework/include/utils",
+    "//drivers/hdf_core/framework/include/config",
+    "//drivers/hdf_core/framework/include",
+    "//drivers/hdf_core/adapter/uhdf2/hdi",
+    "//drivers/peripheral/input/hal/include",
+    "//drivers/peripheral/input/interfaces/include",
+    "${updater_path}/utils/include",
+    "${updater_path}/utils/json",
+    "${updater_path}/services",
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/ui",
+    "${updater_path}/services/ui/include",
+    "${updater_path}/services/ui/control",
+    "${updater_path}/services/ui/driver",
+    "${updater_path}/services/ui/strategy",
+    "${updater_path}/services/ui/view",
+    "${updater_path}/services/ui/language",
+    "${updater_path}/test/unittest/updater_ui_test",
+  ]
+  deps = [
+    "${updater_path}/interfaces/kits/misc_info:libmiscinfo",
+    "${updater_path}/interfaces/kits/packages:libpackageExt",
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/utils:libutils",
+    "//drivers/peripheral/input/hal:hdi_input",
+    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/cJSON:cjson",
+    "//third_party/googletest:gmock_main",
+    "//third_party/googletest:gtest_main",
+    "//third_party/libdrm:libdrm",
+    "//third_party/libpng:libpng",
+  ]
+  configs = [ "${updater_path}/test/unittest:utest_config" ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ui_lite:libupdater_layout",
+  ]
+  install_enable = true
+  part_name = "updater"
+}
