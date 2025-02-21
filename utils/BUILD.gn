@@ -1,0 +1,81 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+ohos_static_library("libutils") {
+  sources = [
+    "json/json_node.cpp",
+    "utils.cpp",
+  ]
+
+  include_dirs = [
+    "include",
+    "//base/update/updater/interfaces/kits/include/",
+    "//base/update/updater/services/include/",
+    "//third_party/bounds_checking_function/include",
+    "//third_party/cJSON",
+  ]
+
+  deps = [
+    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/cJSON:cjson",
+  ]
+  external_deps += [ "init:libbegetutil" ]
+
+  subsystem_name = "updater"
+  part_name = "updater"
+}
+
+ohos_executable("updater_reboot") {
+  sources = [ "updater_reboot.cpp" ]
+
+  include_dirs = [
+    "include",
+    "//base/update/updater/interfaces/kits/include/",
+    "//base/update/updater/services/include/",
+  ]
+
+  deps = [
+    "//base/update/updater/interfaces/kits/misc_info:libmiscinfo",
+    "//base/update/updater/services/fs_manager:libfsmanager",
+    "//base/update/updater/utils:libutils",
+  ]
+  install_images = [ "updater" ]
+  install_enable = true
+  part_name = "updater"
+  subsystem_name = "updater"
+}
+
+ohos_executable("write_updater") {
+  sources = [ "write_updater.cpp" ]
+
+  include_dirs = [
+    "include",
+    "//base/update/updater/interfaces/kits/include/",
+    "//base/update/updater/services/include/",
+    "//third_party/bounds_checking_function/include",
+    "//base/startup/init/interfaces/innerkits/include",
+  ]
+
+  deps = [
+    "//base/update/updater/interfaces/kits/misc_info:libmiscinfo",
+    "//third_party/bounds_checking_function:libsec_static",
+  ]
+  external_deps += [ "init:libbegetutil" ]
+
+  install_enable = true
+  part_name = "updater"
+  subsystem_name = "updater"
+}

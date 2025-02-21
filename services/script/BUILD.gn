@@ -1,0 +1,86 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+SUBSYSTEM_DIR = "//base/update/updater/services/script"
+
+yacc_path = "$root_out_dir/updater/updater/yacc"
+script_yacc_path = "$SUBSYSTEM_DIR/script_interpreter/script_yacc.y"
+script_lex_path = "$SUBSYSTEM_DIR/script_interpreter/script_lex.l"
+action("gen_yacc") {
+  script = "//base/update/updater/services/script/generate_yacc.py"
+  inputs = [ script ]
+  outputs = [
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+  ]
+  args = [
+    "--output",
+    rebase_path(yacc_path, root_build_dir),
+    "--bisoninput",
+    rebase_path(script_yacc_path, root_build_dir),
+    "--flexinput",
+    rebase_path(script_lex_path, root_build_dir),
+  ]
+}
+
+config("script_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "//base/update/updater/interfaces/kits/include",
+    "//base/update/updater/services/include/log",
+    "//base/update/updater/services/include/package",
+    "//base/update/updater/services/include/script",
+    "//base/update/updater/services/include/updater",
+    "//base/update/updater/utils/include",
+    "//third_party/bounds_checking_function/include",
+    "script_instruction",
+    "script_interpreter",
+    "script_manager",
+    "threadpool",
+    "$yacc_path",
+  ]
+
+  configs = [ "//build/config/compiler:exceptions" ]
+}
+
+ohos_static_library("libupdaterscript") {
+  sources = [
+    "$SUBSYSTEM_DIR/script_instruction/script_basicinstruction.cpp",
+    "$SUBSYSTEM_DIR/script_instruction/script_instructionhelper.cpp",
+    "$SUBSYSTEM_DIR/script_instruction/script_loadscript.cpp",
+    "$SUBSYSTEM_DIR/script_instruction/script_registercmd.cpp",
+    "$SUBSYSTEM_DIR/script_instruction/script_updateprocesser.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_context.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_expression.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_function.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_interpreter.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_param.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_scanner.cpp",
+    "$SUBSYSTEM_DIR/script_interpreter/script_statement.cpp",
+    "$SUBSYSTEM_DIR/script_manager/script_managerImpl.cpp",
+    "$SUBSYSTEM_DIR/script_manager/script_utils.cpp",
+    "$SUBSYSTEM_DIR/threadpool/threadpool.cpp",
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+  ]
+  configs = [ ":script_config" ]
+
+  external_deps += [ "c_utils:utils" ]
+  deps = [
+    "//base/update/updater/services/script:gen_yacc",
+    "//third_party/bounds_checking_function:libsec_static",
+  ]
+}
