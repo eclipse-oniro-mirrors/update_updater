@@ -1,0 +1,124 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+yacc_path = "$root_out_dir/updater/updater/yacc"
+script_yacc_path = "./script_interpreter/script_yacc.y"
+script_lex_path = "./script_interpreter/script_lex.l"
+action("gen_yacc") {
+  script = "${updater_path}/services/script/generate_yacc.py"
+  inputs = [ script ]
+  outputs = [
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+  ]
+  args = [
+    "--output",
+    rebase_path(yacc_path, root_build_dir),
+    "--bisoninput",
+    rebase_path(script_yacc_path, root_build_dir),
+    "--flexinput",
+    rebase_path(script_lex_path, root_build_dir),
+  ]
+}
+
+config("script_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/include/updater",
+    "${updater_path}/utils/include",
+    "script_instruction",
+    "script_interpreter",
+    "script_manager",
+    "threadpool",
+    "$yacc_path",
+  ]
+
+  configs = [ "//build/config/compiler:exceptions" ]
+}
+
+config("libupdaterscript_exported_headers") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/script/script_instruction",
+    "${updater_path}/services/script/script_interpreter",
+    "${updater_path}/services/script/script_manager",
+    "${updater_path}/services/script/threadpool",
+  ]
+}
+
+ohos_static_library("libthreadpool") {
+  sources = [ "${updater_path}/services/script/threadpool/threadpool.cpp" ]
+
+  include_dirs = [
+    "${updater_path}/interfaces/kits/include",
+    "${updater_path}/services/common",
+    "${updater_path}/services/include",
+    "${updater_path}/services/include/log",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/script/script_manager",
+    "${updater_path}/services/script/threadpool",
+    "${updater_path}/utils/include",
+  ]
+
+  subsystem_name = "updater"
+  part_name = "updater"
+}
+
+ohos_static_library("libupdaterscript") {
+  sources = [
+    "$root_out_dir/updater/updater/yacc/lexer.cpp",
+    "$root_out_dir/updater/updater/yacc/parser.cpp",
+    "./script_instruction/script_basicinstruction.cpp",
+    "./script_instruction/script_instructionhelper.cpp",
+    "./script_instruction/script_loadscript.cpp",
+    "./script_instruction/script_registercmd.cpp",
+    "./script_instruction/script_updateprocesser.cpp",
+    "./script_interpreter/script_context.cpp",
+    "./script_interpreter/script_expression.cpp",
+    "./script_interpreter/script_function.cpp",
+    "./script_interpreter/script_interpreter.cpp",
+    "./script_interpreter/script_param.cpp",
+    "./script_interpreter/script_scanner.cpp",
+    "./script_interpreter/script_statement.cpp",
+    "./script_manager/script_managerImpl.cpp",
+    "./script_manager/script_utils.cpp",
+  ]
+  configs = [ ":script_config" ]
+
+  public_configs = [ ":libupdaterscript_exported_headers" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "c_utils:utilsbase",
+  ]
+  deps = [
+    "${updater_path}/services/script:gen_yacc",
+    "${updater_path}/services/script:libthreadpool",
+  ]
+
+  subsystem_name = "updater"
+  part_name = "updater"
+}
