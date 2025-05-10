@@ -1,0 +1,89 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+
+config("libring_buffer_headers") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "${updater_path}/service/common",
+    "${updater_path}/service/common/ring_buffer",
+  ]
+}
+
+ohos_shared_library("libupdater_shared") {
+  sources = [ "updaterkits.cpp" ]
+
+  include_dirs = [
+    "../include",
+    "${updater_path}/services/include/log",
+    "${updater_path}/utils/include",
+  ]
+
+  deps = [
+    "${updater_path}/interfaces/kits/misc_info:libmiscinfo",
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/utils:libutils_common",
+    "${updater_path}/utils:libutils_fs",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "init:libbegetutil_static",
+    "lz4:liblz4_static",
+    "openssl:libcrypto_shared",
+    "openssl:libssl_static",
+    "zlib:shared_libz",
+  ]
+
+  innerapi_tags = [
+    "platformsdk",
+    "sasdk",
+  ]
+  public_configs = [ ":libring_buffer_headers" ]
+  install_enable = true
+  install_images = [
+    "system",
+    "updater",
+  ]
+  subsystem_name = "updater"
+  part_name = "updater"
+}
+
+ohos_static_library("libupdaterkits") {
+  sources = [ "updaterkits.cpp" ]
+
+  include_dirs = [
+    "../include",
+    "${updater_path}/services/include/log",
+    "${updater_path}/utils/include",
+  ]
+
+  deps = [
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/utils:libutils",
+    "../misc_info:libmiscinfo",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "init:libbegetutil_static",
+  ]
+  public_configs = [ ":libring_buffer_headers" ]
+  subsystem_name = "updater"
+  part_name = "updater"
+}
