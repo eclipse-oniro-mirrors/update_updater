@@ -1,0 +1,439 @@
+/*
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "updaterkits/updaterkits.h"
+
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <linux/fs.h>
+#include <string>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/statfs.h>
+#include <unistd.h>
+#include "init_reboot.h"
+#include "log.h"
+#include "misc_info/misc_info.h"
+#include "parameter.h"
+#include "securec.h"
+#include "updater/updater_const.h"
+#include "utils.h"
+#include "utils_fs.h"
+
+using namespace Updater;
+using Updater::Utils::SplitString;
+
+#ifndef UPDATER_UT
+constexpr const char *HANDLE_MISC_INFO = "HandleUpdateMiscInfo";
+constexpr const char *HANDLE_MISC_LIB_PATH = "/system/lib64/libupdater_handle_misc.z.so";
+
+static void HandleMiscMsg(const struct UpdateMessage &updateMsg, const std::string &upgradeType)
+{
+    if (!Utils::IsFileExist(HANDLE_MISC_LIB_PATH)) {
+        LOG(WARNING) << "libupdater_handle_misc.z.so is not exist";
+        return;
+    }
+    auto handle = Utils::LoadLibrary(HANDLE_MISC_LIB_PATH);
+    if (handle == nullptr) {
+        LOG(ERROR) << "load libupdater_handle_misc fail";
+        return;
+    }
+    auto getFunc = (void(*)(const std::string &, const std::string &))Utils::GetFunction(handle, HANDLE_MISC_INFO);
+    if (getFunc == nullptr) {
+        LOG(ERROR) << "getFunc is nullptr";
+        Utils::CloseLibrary(handle);
+        return;
+    }
+    getFunc(updateMsg.update, upgradeType);
+    Utils::CloseLibrary(handle);
+}
+#endif
+
+static bool WriteToMiscAndRebootToUpdater(const struct UpdateMessage &updateMsg)
+{
+    // Write package name to misc, then trigger reboot.
+    const char *bootCmd = "boot_updater";
+    int ret = strncpy_s(const_cast<char*>(updateMsg.command), sizeof(updateMsg.command), bootCmd,
+        sizeof(updateMsg.command) - 1);
+    if (ret != 0) {
+        return false;
+    }
+#ifndef UPDATER_UT
+    HandleMiscMsg(updateMsg, "");
+    WriteUpdaterMiscMsg(updateMsg);
+    DoReboot("updater:reboot to updater to trigger update");
+    while (true) {
+        pause();
+    }
+#else
+    return true;
+#endif
+}
+
+static void WriteUpdaterResultFile(const std::string &pkgPath, const std::string &result,
+    const std::string &dirPath, const std::string &fileName)
+{
+    if (access(dirPath.c_str(), 0) != 0) {
+        if (Utils::MkdirRecursive(dirPath.c_str(), 0755) != 0) { // 0755: -rwxr-xr-x
+            LOG(ERROR) << "Mkdir recursive " << dirPath << " error:" << errno;
+            return;
+        }
+    }
+    const std::string resultFile = dirPath + "/" + fileName;
+    LOG(INFO) << "WriteUpdaterResultFile, result: " << result << " , resultFile: " << resultFile;
+    FILE *fp = fopen(resultFile.c_str(), "w+");
+    if (fp == nullptr) {
+        LOG(ERROR) << "fopen updater result file failed: " << resultFile << ", err:" << errno;
+        return;
+    }
+    std::string resultInfo = pkgPath + "|notstart|" + result + "||\n";
+    if (fwrite(resultInfo.c_str(), resultInfo.size() + 1, 1, fp) <= 0) {
+        LOG(WARNING) << "write updater result file failed: " << resultFile << ", err:" << errno;
+    }
+    if (fsync(fileno(fp)) != 0) {
+        LOG(WARNING) << "fsync updater result file failed: " << resultFile << ", err:" << strerror(errno);
+    }
+    if (fclose(fp) != 0) {
+        LOG(WARNING) << "close updater result file failed: " << resultFile << ", err:" << errno;
+    }
+
+    (void)chown(resultFile.c_str(), Utils::USER_ROOT_AUTHORITY, Utils::GROUP_UPDATE_AUTHORITY);
+    (void)chmod(resultFile.c_str(), 0660); // 0660: -rw-rw----
+}
+
+static std::string ParsePkgPath(const struct UpdateMessage &updateMsg)
+{
+    std::string pkgPath = "";
+    std::string pathInfo(updateMsg.update, sizeof(updateMsg.update));
+    std::string::size_type startPos = pathInfo.find("update_package=");
+    std::string::size_type endPos = pathInfo.find(".zip");
+    if (startPos != pathInfo.npos && endPos != pathInfo.npos) {
+        startPos += strlen("update_package=");
+        endPos += strlen(".zip");
+        if (endPos > startPos) {
+            pkgPath = pathInfo.substr(startPos, endPos - startPos);
+        } else {
+            LOG(ERROR) << "pkgPath invalid";
+        }
+    }
+    return pkgPath;
+}
+
+static bool WriteToMiscAndResultFileRebootToUpdater(const struct UpdateMessage &updateMsg,
+    const std::string &upgradeType, const RebootFunType &rebootFunc)
+{
+    // Write package name to misc, then trigger reboot.
+    const char *bootCmd = "boot_updater";
+    int ret = strncpy_s(const_cast<char*>(updateMsg.command), sizeof(updateMsg.command), bootCmd,
+        sizeof(updateMsg.command) - 1);
+    if (ret != 0) {
+        return false;
+    }
+    std::string pkgPath = ParsePkgPath(updateMsg);
+    // Flag before the misc in written
+    std::string writeMiscBefore = "0x80000000";
+    WriteUpdaterResultFile(pkgPath, writeMiscBefore, UPDATER_PATH, UPDATER_RESULT_FILE);
+    WriteUpdaterResultFile(pkgPath, writeMiscBefore, LOG_UPDATER_PATH, UPDATER_RESULT_FILE);
+#ifndef UPDATER_UT
+    HandleMiscMsg(updateMsg, upgradeType);
+    WriteUpdaterMiscMsg(updateMsg);
+    // Flag after the misc in written
+    std::string writeMiscAfter = "0x80000008";
+    WriteUpdaterResultFile(pkgPath, writeMiscAfter, UPDATER_PATH, UPDATER_RESULT_FILE);
+    WriteUpdaterResultFile(pkgPath, writeMiscAfter, LOG_UPDATER_PATH, UPDATER_RESULT_FILE);
+    if (rebootFunc != nullptr && rebootFunc() != 0) {
+        LOG(ERROR) << "reboot func Failed";
+        return false;
+    } else if (rebootFunc == nullptr) {
+        DoReboot("updater:reboot to updater to trigger update");
+    }
+    while (true) {
+        pause();
+    }
+#else
+    return true;
+#endif
+}
+
+static bool IsPackagePath(const std::string &path)
+{
+    if (path.find("--force_update_action=") != std::string::npos ||
+        path.find("--night_update") != std::string::npos ||
+        path.find("--shrink_info=") != std::string::npos ||
+        path.find("--virtual_shrink_info=") != std::string::npos ||
+        path.find("--screen_state=") != std::string::npos) {
+            return false;
+        }
+    return true;
+}
+
+static void WriteInodeToFile(const std::string &inode)
+{
+    if (inode == "0") {
+        return;
+    }
+    std::string dirPath = UPDATER_INODE_PATH;
+    struct stat dirStat {};
+    Utils::RemoveDir(dirPath); // first to delete
+    if (stat(dirPath.c_str(), &dirStat) != 0) { // then remake dir
+        Utils::MkdirRecursive(dirPath.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    }
+    std::string filePath = dirPath + "/" + inode;
+    int fd = open(filePath.c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (fd < 0) {
+        LOG(ERROR) << "updaterkits: open " << filePath << " failed";
+        return;
+    }
+    if (fsync(fd) != 0) {
+        LOG(ERROR) << "updaterkits: fsync " << filePath << " failed";
+        close(fd);
+        return;
+    }
+    close(fd);
+}
+
+static std::string GetFileInode(const std::string& path)
+{
+    struct stat fileStat{};
+    if (stat(path.c_str(), &fileStat) != 0) {
+        LOG(WARNING) << "stat fail " << path << ", errno " << errno;
+        return "0";
+    }
+    return std::to_string(fileStat.st_ino);
+}
+
+static void UpdateOptExpand(std::string& updateOpt)
+{
+    if (updateOpt.find("--shrink_info=") == std::string::npos &&
+        updateOpt.find("--virtual_shrink_info=") == std::string::npos) {
+        return;
+    }
+    std::vector<std::string> pathVec {"/data/service/el1/0/hyperhold"};
+    char paramVal[Updater::Utils::PARAM_SIZE + 1] = {0};
+    if (GetParameter("const.hdi_power.swap_file_path", "", paramVal, sizeof(paramVal) - 1) > 0) {
+        pathVec.emplace_back(paramVal);
+    }
+    for (const auto &path : pathVec) {
+        std::string inode = GetFileInode(path);
+        updateOpt += "," + inode;
+        WriteInodeToFile(inode);
+    }
+}
+
+static int AddPkgPath(struct UpdateMessage &msg, size_t updateOffset, const std::vector<std::string> &packageName)
+{
+    for (auto path : packageName) {
+        if (updateOffset > sizeof(msg.update)) {
+            LOG(ERROR) << "updaterkits: updateOffset > msg.update, return false";
+            return 4; // 4 : path is too long
+        }
+        int ret;
+        if (IsPackagePath(path)) {
+            ret = snprintf_s(msg.update + updateOffset, sizeof(msg.update) - updateOffset,
+                sizeof(msg.update) - 1 - updateOffset, "--update_package=%s\n", path.c_str());
+        } else {
+            UpdateOptExpand(path);
+            ret = snprintf_s(msg.update + updateOffset, sizeof(msg.update) - updateOffset,
+                sizeof(msg.update) - 1 - updateOffset, "%s\n", path.c_str());
+        }
+        if (ret < 0) {
+            LOG(ERROR) << "updaterkits: copy updater message failed";
+            return 5; // 5 : The library function is incorrect
+        }
+        updateOffset += static_cast<size_t>(ret);
+    }
+    return 0;
+}
+
+bool RebootAndInstallSdcardPackage(const std::string &miscFile, const std::vector<std::string> &packageName)
+{
+    struct UpdateMessage msg {};
+    int ret = snprintf_s(msg.update, sizeof(msg.update), sizeof(msg.update) - 1, "--sdcard_update\n");
+    if (ret < 0) {
+        LOG(ERROR) << "updaterkits: copy updater message failed";
+        return false;
+    }
+
+    if (packageName.size() != 0 && AddPkgPath(msg, static_cast<size_t>(ret), packageName) != 0) {
+        LOG(ERROR) << "get sdcard pkg path fail";
+        return false;
+    }
+    WriteToMiscAndRebootToUpdater(msg);
+
+    // Never get here.
+    return true;
+}
+
+int RebootAndInstallUpgradePackage(const std::string &miscFile, const std::vector<std::string> &packageName,
+    const std::string &upgradeType, const RebootFunType &rebootFunc)
+{
+    if (packageName.size() == 0 && (upgradeType == UPGRADE_TYPE_OTA || upgradeType == UPGRADE_TYPE_OTA_INTRAL)) {
+        LOG(ERROR) << "updaterkits: invalid argument. one of arugments is empty";
+        return 1; // 1 : Invalid input
+    }
+
+    for (auto path : packageName) {
+        if (IsPackagePath(path)) {
+            if (access(path.c_str(), R_OK) < 0) {
+            LOG(ERROR) << "updaterkits: " << path << " is not readable";
+            return 2; // 2 : pkg not exit
+            }
+        }
+    }
+    struct UpdateMessage updateMsg {};
+    int ret = 0;
+    if (upgradeType == UPGRADE_TYPE_SD) {
+        ret = snprintf_s(updateMsg.update, sizeof(updateMsg.update), sizeof(updateMsg.update) - 1,
+            "--sdcard_update\n");
+    } else if (upgradeType == UPGRADE_TYPE_SD_INTRAL) {
+        ret = snprintf_s(updateMsg.update, sizeof(updateMsg.update), sizeof(updateMsg.update) - 1,
+            "--sdcard_intral_update\n");
+    } else if (upgradeType == UPGRADE_TYPE_OTA_INTRAL) {
+        ret = snprintf_s(updateMsg.update, sizeof(updateMsg.update), sizeof(updateMsg.update) - 1,
+            "--ota_intral_update\n");
+    } else if (upgradeType == UPGRADE_TYPE_SUBPKG_UPDATE) {
+        ret = snprintf_s(updateMsg.update, sizeof(updateMsg.update), sizeof(updateMsg.update) - 1,
+            "--subpkg_update\n");
+    }
+    if (ret < 0) {
+        LOG(ERROR) << "updaterkits: copy updater message failed";
+        return 3; // 3 : The library function is incorrect
+    }
+    int addRet = AddPkgPath(updateMsg, static_cast<size_t>(ret), packageName);
+    if (addRet != 0) {
+        return addRet;
+    }
+    if (upgradeType == UPGRADE_TYPE_OTA || upgradeType == UPGRADE_TYPE_OTA_INTRAL ||
+        upgradeType == UPGRADE_TYPE_SUBPKG_UPDATE) {
+        if (!WriteToMiscAndResultFileRebootToUpdater(updateMsg, upgradeType, rebootFunc)) {
+            return 6; // 6 : Reboot failed
+        }
+    } else {
+        WriteToMiscAndRebootToUpdater(updateMsg);
+    }
+
+    // Never get here.
+    return 0;
+}
+
+int RebootAndInstallUpgradePackage(const std::string &miscFile, const std::vector<std::string> &packageName,
+                                   const std::string &upgradeType)
+{
+    return RebootAndInstallUpgradePackage(miscFile, packageName, upgradeType, nullptr);
+}
+
+bool RebootAndCleanUserData(const std::string &miscFile, const std::string &cmd)
+{
+    if (miscFile.empty() || cmd.empty()) {
+        LOG(ERROR) << "updaterkits: invalid argument. one of arugments is empty";
+        return false;
+    }
+
+    // Write package name to misc, then trigger reboot.
+    struct UpdateMessage updateMsg {};
+    if (strncpy_s(updateMsg.update, sizeof(updateMsg.update), cmd.c_str(), cmd.size()) != EOK) {
+        LOG(ERROR) << "updaterkits: copy updater message failed";
+        return false;
+    }
+
+    WriteToMiscAndRebootToUpdater(updateMsg);
+
+    // Never get here.
+    return true;
+}
+
+bool RebootAndSecureErase(const std::string &eraseType, const std::string &cmd)
+{
+    if (cmd.empty()) {
+        LOG(ERROR) << "updaterkits: invalid argument. cmd is empty";
+        return false;
+    }
+    std::string eraseCmd = "--secure_erase";
+    if (eraseType == "DATA_AND_OS") {
+        eraseCmd = "--disk_erase";
+    }
+    struct UpdateMessage updateMsg {};
+    std::string secureEraseCmd = eraseCmd + cmd;
+    int ret = snprintf_s(updateMsg.update, sizeof(updateMsg.update), sizeof(updateMsg.update) - 1,
+        secureEraseCmd.c_str());
+    if (ret < 0) {
+        LOG(ERROR) << "updaterkits: copy secure erase cmd message failed";
+        return false;
+    }
+    WriteToMiscAndRebootToUpdater(updateMsg);
+
+    // Never get here.
+    return true;
+}
+
+bool RebootAndSecureErase(const std::string &eraseType)
+{
+    std::string eraseCmd = "--secure_erase\n";
+    if (eraseType == "DATA_AND_OS") {
+        eraseCmd = "--disk_erase\n";
+    }
+    struct UpdateMessage msg {};
+    int ret = snprintf_s(msg.update, sizeof(msg.update), sizeof(msg.update) - 1, eraseCmd.c_str());
+    if (ret < 0) {
+        LOG(ERROR) << "updaterkits: copy secure erase cmd message failed";
+        return false;
+    }
+    WriteToMiscAndRebootToUpdater(msg);
+
+    // Never get here.
+    return true;
+}
+
+static uint32_t GetBootdevType()
+{
+    uint32_t ret = 0;
+    std::ifstream fin(BOOTDEV_TYPE, std::ios::in);
+    if (!fin.is_open()) {
+        LOG(ERROR) << "open bootdev failed";
+        return ret;
+    }
+    fin >> ret;
+    fin.close();
+    LOG(INFO) << "bootdev type is " << ret;
+    return ret;
+}
+
+uint32_t EstimatedEraseTime(const std::string &eraseType)
+{
+    uint64_t partSize = 0;
+    std::string writePath = "/data";
+    char realPath[PATH_MAX] = {0};
+    if (realpath(writePath.c_str(), realPath) == nullptr) {
+        LOG(ERROR) << "realpath failed " << writePath << ", errno " << errno;
+        return 0;
+    }
+    struct statfs st;
+    if (statfs(realPath, &st) >= 0) {
+        partSize = static_cast<uint64_t>(st.f_blocks) * static_cast<uint64_t>(st.f_bsize);
+    } else {
+        LOG(ERROR) << "statfs failed " << realPath << ", errno " << errno;
+        return 0;
+    }
+    uint32_t bootdevType = GetBootdevType();
+    uint32_t eraseTime = Updater::EMMC_ERASE_1T_TIME;
+    if (bootdevType == 1) {
+        eraseTime = Updater::UFS_ERASE_1T_TIME;
+    } else if (bootdevType & (1 << 2)) { // 2 ： boot device is ssd
+        eraseTime = Updater::SSD_ERASE_1T_TIME;
+    }
+    double sizeRatio = static_cast<double>(partSize) / Updater::DEFAULT_1T_SIZE;
+    uint32_t estimatedTime = static_cast<uint32_t>(sizeRatio * eraseTime);
+    LOG(INFO) << "bootdevType: " << bootdevType << ", estimatedTime: " << estimatedTime;
+    return estimatedTime;
+}

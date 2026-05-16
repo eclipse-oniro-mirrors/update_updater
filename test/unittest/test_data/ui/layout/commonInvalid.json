@@ -1,0 +1,33 @@
+{
+    "id" : "menu",
+    "bgColor" : "#000000ff",
+    "default" : {
+        "Common" : {
+            "visible" : true
+        },
+        "UILabel" : {
+            "bgColor" : "#000000ff",
+            "fontColor" : "#ffffffff",
+            "align" : "center",
+            "style" : "normal",
+            "focusInfo" : {
+                "focusedBgColor" : "#000000ff",
+                "focusedFontColor" : "#ffffffff",
+                "focusable" : false
+            },
+            "touchable" : false,
+            "lineBreakMode" : "ellipsis"
+        }
+    },
+    "coms" : [
+        {
+            "type" : "UILabel",
+            "id" : "Label_RebootToNormalSystem",
+            "text" : "Reboot to normal system",
+            "x" : 1280,
+            "y" : 0,
+            "fontSize" : 60,
+            "visible" : false
+        }
+    ]
+}
