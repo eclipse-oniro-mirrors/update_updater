@@ -1,0 +1,71 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/update/updater/updater_default_cfg.gni")
+import("//build/ohos.gni")
+
+updater_path = rebase_path("${updater_absolutely_path}", ".")
+config("updater_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "${updater_path}/services/common",
+    "${updater_path}/services/include",
+    "${updater_path}/services/include",
+    "${updater_path}/utils/include",
+    "${updater_path}/utils/json",
+    "${updater_path}/interfaces/kits/include/",
+    "${updater_path}/services/include/script",
+    "${updater_path}/services/include/package",
+    "${updater_path}/services/include/applypatch",
+    "${updater_path}/services/include/log",
+  ]
+}
+
+config("libptableparse_exported_headers") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "${updater_path}/services/include",
+    "${updater_path}/services",
+  ]
+}
+
+ohos_static_library("libptableparse") {
+  sources = [
+    "./composite_ptable.cpp",
+    "./emmc_ptable.cpp",
+    "./ptable.cpp",
+    "./ptable_manager.cpp",
+    "./ptable_process.cpp",
+    "./ufs_ptable.cpp",
+  ]
+  configs = [ ":updater_config" ]
+
+  public_configs = [ ":libptableparse_exported_headers" ]
+
+  ldflags = [ "-Wl -std=c++11" ]
+
+  deps = [
+    "${updater_path}/services/log:libupdaterlog",
+    "${updater_path}/utils:libutils",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_static",
+    "bzip2:libbz2",
+    "cJSON:cjson_static",
+    "init:libfsmanager_static_real",
+  ]
+
+  part_name = "updater"
+  subsystem_name = "updater"
+}
